@@ -11,7 +11,7 @@ var speedometer = require('speedometer')
 var Wire = require('bittorrent-protocol')
 var Tracker = require('webtorrent-tracker/client')
 
-var MAX_PEERS = 55
+var MAX_PEERS = 30
 var HANDSHAKE_TIMEOUT = 25000
 
 /**
