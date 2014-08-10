@@ -43,6 +43,10 @@ function Peer (swarm, stream, id) {
   stream.once('close', destroy)
   stream.once('finish', destroy)
 
+  stream.on('data', function (data) {
+    console.log(data)
+  })
+
   wire.once('end', destroy)
   wire.once('close', destroy)
   wire.once('error', destroy)
@@ -51,10 +55,11 @@ function Peer (swarm, stream, id) {
   // Duplex streaming magic!
   stream.pipe(wire).pipe(stream)
 
-  this.wire.on('handshake', this._onHandshake.bind(this))
+  wire.on('handshake', this._onHandshake.bind(this))
 }
 
 Peer.prototype.destroy = function () {
+  debug('peer destroy')
   if (this.stream) this.stream.destroy()
   if (this.wire) this.wire.destroy()
   if (this.timeout) clearTimeout(this.timeout)
@@ -72,7 +77,8 @@ Peer.prototype.destroy = function () {
  */
 Peer.prototype.handshake = function () {
   this.paused = false
-  this.wire.handshake(this.infoHash, this.peerId, this.handshake)
+  this.wire.handshake(this.swarm.infoHash, this.swarm.peerId, this.swarm.handshake)
+  debug('sent handshake i %s p %s', this.swarm.infoHashHex, this.swarm.peerIdHex)
 
   if (!this.handshaked) {
     // Peer must respond to handshake in timely manner
@@ -87,7 +93,10 @@ Peer.prototype.handshake = function () {
  * @param  {string} infoHash
  */
 Peer.prototype._onHandshake = function (infoHash) {
-  if (this.swarm.destroyed || infoHash.toString('hex') !== this.infoHash.toString('hex'))
+  var infoHashHex = infoHash.toString('hex')
+  debug('got handshake %s', infoHashHex)
+
+  if (this.swarm.destroyed || infoHashHex !== this.swarm.infoHashHex)
     return this.destroy()
 
   this.handshaked = true
@@ -133,13 +142,18 @@ function Swarm (parsedTorrent, peerId, opts) {
   EventEmitter.call(this)
   if (!opts) opts = {}
 
+
   this.parsedTorrent = parsedTorrent
 
+  this.infoHashHex = parsedTorrent.infoHash
   this.infoHash = new Buffer(parsedTorrent.infoHash, 'hex')
 
   this.peerId = typeof peerId === 'string'
     ? new Buffer(peerId, 'utf8')
     : peerId
+  this.peerIdHex = this.peerId.toString('hex')
+
+  debug('new swarm i %s p %s', this.infoHashHex, this.peerIdHex)
 
   this.handshake = opts.handshake // handshake extensions
   this.maxPeers = opts.maxPeers || MAX_PEERS
@@ -170,7 +184,7 @@ function Swarm (parsedTorrent, peerId, opts) {
   this.tracker.on('peer', function (peer, peerId) {
     debug('got peer %s', peerId)
     window.peer = peer
-    this.add(peer, peerId)
+    this.add(peer.getDataStream(), peerId)
   }.bind(this))
 
   this.tracker.start()
@@ -205,7 +219,7 @@ Object.defineProperty(Swarm.prototype, 'numPeers', {
  */
 Swarm.prototype.add = function (stream, peerId) {
   if (this.destroyed) return
-  var peer = new Peer(stream, peerId)
+  var peer = new Peer(this, stream, peerId)
 
   this._peers[peerId] = peer
   this._queue.push(peer)
@@ -218,6 +232,7 @@ Swarm.prototype.add = function (stream, peerId) {
  * or their wires.
  */
 Swarm.prototype.pause = function () {
+  debug('swarm pause')
   this.paused = true
 }
 
@@ -225,6 +240,7 @@ Swarm.prototype.pause = function () {
  * Resume connecting to new peers.
  */
 Swarm.prototype.resume = function () {
+  debug('swarm resume')
   this.paused = false
   this._drain()
 }
@@ -234,6 +250,7 @@ Swarm.prototype.resume = function () {
  * @param  {string} peer  simple-peer instance
  */
 Swarm.prototype.remove = function (peer) {
+  debug('swarm remove')
   this._remove(peer)
   this._drain()
 }
@@ -243,6 +260,7 @@ Swarm.prototype.remove = function (peer) {
  * @param  {string} peer  simple-peer instance
  */
 Swarm.prototype._remove = function (peer) {
+  debug('swarm _remove')
   peer.destroy()
 }
 
@@ -253,8 +271,9 @@ Swarm.prototype._remove = function (peer) {
 Swarm.prototype.destroy = function (onclose) {
   if (this.destroyed) return
   this.destroyed = true
-
   if (onclose) this.once('close', onclose)
+
+  debug('swarm destroy')
 
   for (var peer in this._peers) {
     this._remove(peer)
@@ -274,6 +293,6 @@ Swarm.prototype._drain = function () {
   var peer = this._queue.shift()
   if (peer) {
     peer.handshake()
-    debug('connect to %s (conns %s, peers %s)', peer.id, this.numPeers)
+    debug('drain %s queued %s peers %s max', this.numQueued, this.numPeers, this.maxPeers)
   }
 }
