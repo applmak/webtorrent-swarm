@@ -1,6 +1,3 @@
-// TODO: pause wire until _drain() is called so handshake won't be sent (even if remote
-// peer sends handshake). This is how we rate-limit when there are too many peers.
-
 module.exports = Swarm
 
 var debug = require('debug')('webtorrent-swarm')
@@ -66,6 +63,13 @@ Peer.prototype.destroy = function () {
   this.timeout = null
 }
 
+/**
+ * Send a handshake to the remote peer. This is called by _drain() when there is room
+ * for a new peer in this swarm. Even if the remote peer sends us a handshake, we might
+ * not send a return handshake. This is how we rate-limit when there are too many peers;
+ * without a return handshake the remote peer won't start sending us data or piece
+ * requests.
+ */
 Peer.prototype.handshake = function () {
   this.paused = false
   this.wire.handshake(this.infoHash, this.peerId, this.handshake)
