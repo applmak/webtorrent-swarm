@@ -43,19 +43,15 @@ function Peer (swarm, stream, id) {
   stream.once('close', destroy)
   stream.once('finish', destroy)
 
-  stream.on('data', function (data) {
-    console.log(data)
-  })
-
   wire.once('end', destroy)
   wire.once('close', destroy)
   wire.once('error', destroy)
   wire.once('finish', destroy)
 
+  wire.on('handshake', this._onHandshake.bind(this))
+
   // Duplex streaming magic!
   stream.pipe(wire).pipe(stream)
-
-  wire.on('handshake', this._onHandshake.bind(this))
 }
 
 Peer.prototype.destroy = function () {
@@ -290,9 +286,9 @@ Swarm.prototype.destroy = function (onclose) {
  */
 Swarm.prototype._drain = function () {
   if (this.paused || this.destroyed || this.numPeers >= this.maxPeers) return
+  debug('drain %s queued %s peers %s max', this.numQueued, this.numPeers, this.maxPeers)
   var peer = this._queue.shift()
   if (peer) {
     peer.handshake()
-    debug('drain %s queued %s peers %s max', this.numQueued, this.numPeers, this.maxPeers)
   }
 }
