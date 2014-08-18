@@ -135,20 +135,19 @@ inherits(Swarm, EventEmitter)
  *
  * Events: wire, download, upload, error, close
  *
- * @param {Buffer|string} parsedTorrent
+ * @param {Buffer|string} infoHash
  * @param {Buffer|string} peerId
  * @param {Object} opts
  */
-function Swarm (parsedTorrent, peerId, opts) {
-  if (!(this instanceof Swarm)) return new Swarm(parsedTorrent, peerId, opts)
+function Swarm (infoHash, peerId, opts) {
+  if (!(this instanceof Swarm)) return new Swarm(infoHash, peerId, opts)
   EventEmitter.call(this)
   if (!opts) opts = {}
 
-
-  this.parsedTorrent = parsedTorrent
-
-  this.infoHashHex = parsedTorrent.infoHash
-  this.infoHash = new Buffer(parsedTorrent.infoHash, 'hex')
+  this.infoHash = typeof infoHash === 'string'
+    ? new Buffer(infoHash, 'hex')
+    : infoHash
+  this.infoHashHex = this.infoHash.toString('hex')
 
   this.peerId = typeof peerId === 'string'
     ? new Buffer(peerId, 'utf8')
@@ -232,7 +231,7 @@ Swarm.prototype.resume = function () {
  * @param  {string} peer  simple-peer instance
  */
 Swarm.prototype.removePeer = function (peer) {
-  debug('removePeer')
+  debug('removePeer %s', peer)
   this._removePeer(peer)
   this._drain()
 }
@@ -242,7 +241,7 @@ Swarm.prototype.removePeer = function (peer) {
  * @param  {string} peer  simple-peer instance
  */
 Swarm.prototype._removePeer = function (peer) {
-  debug('_removePeer')
+  debug('_removePeer %s', peer)
   peer.destroy()
 }
 
