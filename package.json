@@ -1,6 +1,6 @@
 {
   "name": "webtorrent-swarm",
-  "description": "WebTorrent swarm (connection management)",
+  "description": "Simple, robust, WebTorrent \"swarm\" implementation",
   "version": "0.1.2",
   "author": {
     "name": "Feross Aboukhadijeh",
