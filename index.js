@@ -1,3 +1,6 @@
+// TODO: don't return offer when we're at capacity. the approach of not sending handshake
+//       wastes webrtc connections which are a more limited resource
+
 module.exports = Swarm
 
 var debug = require('debug')('webtorrent-swarm')
@@ -6,7 +9,6 @@ var inherits = require('inherits')
 var once = require('once')
 var speedometer = require('speedometer')
 var Wire = require('bittorrent-protocol')
-var Tracker = require('webtorrent-tracker/client')
 
 var MAX_PEERS = 30
 var HANDSHAKE_TIMEOUT = 25000
@@ -49,6 +51,10 @@ function Peer (swarm, stream, id) {
   wire.once('finish', destroy)
 
   wire.on('handshake', this._onHandshake.bind(this))
+
+  stream.on('data', function (chunk) {
+    console.log(chunk.toString())
+  })
 
   // Duplex streaming magic!
   stream.pipe(wire).pipe(stream)
@@ -165,26 +171,6 @@ function Swarm (parsedTorrent, peerId, opts) {
 
   this.paused = false
   this.destroyed = false
-
-  // init tracker
-  this.tracker = new Tracker(this.peerId, this.parsedTorrent)
-
-  this.tracker.on('warning', function (err) {
-    debug('tracker warning %s', err.message)
-  })
-
-  this.tracker.on('error', function (err) {
-    debug('tracker error %s', err.message)
-  })
-
-  this.tracker.on('peer', function (peer, peerId) {
-    debug('got peer %s', peerId)
-    window.peer = peer
-    this.add(peer.getDataStream(), peerId)
-  }.bind(this))
-
-  this.tracker.start()
-  // TODO: send tracker updates
 }
 
 Object.defineProperty(Swarm.prototype, 'ratio', {
@@ -210,13 +196,13 @@ Object.defineProperty(Swarm.prototype, 'numPeers', {
 
 /**
  * Add a peer to the swarm.
- * @param {stream.Duplex} stream to remote peer
+ * @param {stream.Duplex|Peer} stream to remote peer
  * @param {string|Buffer} peerId peer's id
  */
-Swarm.prototype.add = function (stream, peerId) {
+Swarm.prototype.addPeer = function (stream, peerId) {
   if (this.destroyed) return
+  if (stream.getDataStream) stream = stream.getDataStream() // peer
   var peer = new Peer(this, stream, peerId)
-
   this._peers[peerId] = peer
   this._queue.push(peer)
   this._drain()
@@ -228,7 +214,7 @@ Swarm.prototype.add = function (stream, peerId) {
  * or their wires.
  */
 Swarm.prototype.pause = function () {
-  debug('swarm pause')
+  debug('pause')
   this.paused = true
 }
 
@@ -236,7 +222,7 @@ Swarm.prototype.pause = function () {
  * Resume connecting to new peers.
  */
 Swarm.prototype.resume = function () {
-  debug('swarm resume')
+  debug('resume')
   this.paused = false
   this._drain()
 }
@@ -245,9 +231,9 @@ Swarm.prototype.resume = function () {
  * Remove a peer from the swarm.
  * @param  {string} peer  simple-peer instance
  */
-Swarm.prototype.remove = function (peer) {
-  debug('swarm remove')
-  this._remove(peer)
+Swarm.prototype.removePeer = function (peer) {
+  debug('removePeer')
+  this._removePeer(peer)
   this._drain()
 }
 
@@ -255,8 +241,8 @@ Swarm.prototype.remove = function (peer) {
  * Private method to remove a peer from the swarm without calling _drain().
  * @param  {string} peer  simple-peer instance
  */
-Swarm.prototype._remove = function (peer) {
-  debug('swarm _remove')
+Swarm.prototype._removePeer = function (peer) {
+  debug('_removePeer')
   peer.destroy()
 }
 
@@ -269,10 +255,10 @@ Swarm.prototype.destroy = function (onclose) {
   this.destroyed = true
   if (onclose) this.once('close', onclose)
 
-  debug('swarm destroy')
+  debug('destroy')
 
   for (var peer in this._peers) {
-    this._remove(peer)
+    this._removePeer(peer)
   }
 
   this.emit('close')

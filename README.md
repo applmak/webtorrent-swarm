@@ -1,6 +1,6 @@
 # webtorrent-swarm [![travis](https://img.shields.io/travis/feross/webtorrent-swarm.svg)](https://travis-ci.org/feross/webtorrent-swarm) [![npm](https://img.shields.io/npm/v/webtorrent-swarm.svg)](https://npmjs.org/package/webtorrent-swarm) [![gittip](https://img.shields.io/gittip/feross.svg)](https://www.gittip.com/feross/)
 
-### WebTorrent swarm (peer discovery, connection management)
+### WebTorrent swarm (connection management)
 
 ### THIS IS A WORK IN PROGRESS
 
