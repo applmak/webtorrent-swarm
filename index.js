@@ -52,10 +52,6 @@ function Peer (swarm, stream, id) {
 
   wire.on('handshake', this._onHandshake.bind(this))
 
-  stream.on('data', function (chunk) {
-    console.log(chunk.toString())
-  })
-
   // Duplex streaming magic!
   stream.pipe(wire).pipe(stream)
 }
