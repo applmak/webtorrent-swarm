@@ -191,14 +191,13 @@ Object.defineProperty(Swarm.prototype, 'numPeers', {
 
 /**
  * Add a peer to the swarm.
- * @param {stream.Duplex|Peer} stream to remote peer
- * @param {string|Buffer} peerId peer's id
+ * @param {SimplePeer} simplePeer     simple peer instance to remote peer
+ * @param {string}     simplePeer.id  peer id
  */
-Swarm.prototype.addPeer = function (stream, peerId) {
+Swarm.prototype.addPeer = function (simplePeer) {
   if (this.destroyed) return
-  if (stream.getDataStream) stream = stream.getDataStream() // peer
-  var peer = new Peer(this, stream, peerId)
-  this._peers[peerId] = peer
+  var peer = new Peer(this, simplePeer.getDataStream(), simplePeer.id)
+  this._peers[simplePeer.id] = peer
   this._queue.push(peer)
   this._drain()
 }
