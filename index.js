@@ -195,8 +195,7 @@ Object.defineProperty(Swarm.prototype, 'numPeers', {
 Swarm.prototype.addPeer = function (simplePeer) {
   if (this.destroyed) return
   if (this._peers[simplePeer.id]) return
-  var stream = simplePeer.getDataStream()
-  var peer = new Peer(this, stream, simplePeer.id)
+  var peer = new Peer(this, simplePeer, simplePeer.id)
   this._peers[simplePeer.id] = peer
   this._queue.push(peer)
   this._drain()
