@@ -32,8 +32,7 @@ function Peer (swarm, stream, id) {
   this.paused = true
 
   var destroy = once(function () {
-    if (this.handshaked)
-      this.swarm.wires.splice(this.swarm.wires.indexOf(this.wire), 1)
+    if (this.handshaked) this.swarm.wires.splice(this.swarm.wires.indexOf(this.wire), 1)
     this.destroy()
     this.swarm._drain()
     this.swarm._peers[this.id] = null
@@ -94,8 +93,9 @@ Peer.prototype._onHandshake = function (infoHash) {
   var infoHashHex = infoHash.toString('hex')
   debug('got handshake %s', infoHashHex)
 
-  if (this.swarm.destroyed || infoHashHex !== this.swarm.infoHashHex)
+  if (this.swarm.destroyed || infoHashHex !== this.swarm.infoHashHex) {
     return this.destroy()
+  }
 
   this.handshaked = true
   clearTimeout(this.timeout)
@@ -170,10 +170,8 @@ function Swarm (infoHash, peerId, opts) {
 
 Object.defineProperty(Swarm.prototype, 'ratio', {
   get: function () {
-    if (this.downloaded === 0)
-      return 0
-    else
-      return this.uploaded / this.downloaded
+    if (this.downloaded === 0) return 0
+    else return this.uploaded / this.downloaded
   }
 })
 
